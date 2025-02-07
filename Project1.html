@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta nink href="./libs/ol.css" rel="stylesheet">
+    <script src="./libs/ol.js"></script>
+    <link rel="stylesheet" href="node_modules/ol/ol.css">
+
+    <!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+<!-- Leaflet JavaScript -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+            #layerSwitcher {
+        position: absolute;
+        top: 180px; /* افزایش مقدار به 60px یا بیشتر */
+        left: 10px;
+        background: white;
+        padding: 10px;
+        border-radius: 5px;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+        z-index: 1000; /* قرار دادن سوئیچر در بالای سایر عناصر */
+    }
+        
+        /* Style for modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 400px;
+            border-radius: 5px;
+        }
+
+        /* Close button style */
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        #add-point-btn {
+            position: absolute;
+            top: 115px;
+            right: 10px;
+            z-index: 1000;
+            background-color: #ffffff;
+            padding: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #add-point-btn img {
+            width: 30px; /* Width of the icon */
+            height: 30px; /* Height of the icon */
+            filter: brightness(0.5); /* Initially dark color */
+        }
+
+        #add-point-btn.active img {
+            filter: brightness(1); /* Bright color when active */
+        }
+
+        #measure-length-btn {
+            position: absolute;
+            top: 165px;
+            right: 10px;
+            z-index: 1000;
+            background-color: #ffffff;
+            padding: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #measure-length-btn img {
+            width: 30px; /* Adjust the width as needed */
+            height: 30px; /* Adjust the height as needed */
+            filter: brightness(0.5); /* Initially dark color */
+        }
+
+        /* Style for active icon */
+        #measure-length-btn.active img {
+         filter: brightness(1);
+        }
+
+        #measure-area-btn {
+            position: absolute;
+            top: 215px;
+            right: 10px;
+            z-index: 1000;
+            background-color: #ffffff;
+            padding: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+ 
+
+        #measure-area-btn img {
+            width: 30px; /* Adjust the width as needed */
+            height: 30px; /* Adjust the height as needed */
+            filter: brightness(0.5);
+        } 
+        /* Style for active icon */
+        #measure-area-btn.active img {
+         filter: brightness(1);
+        }
+ 
+        #toggleShapefileBtn {
+            position: absolute;
+            top: 265px;
+            right: 10px;
+            z-index: 1000;
+            background-color: #ffffff;
+            padding: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+ 
+
+        #toggleShapefileBtn img {
+            width: 30px; /* Adjust the width as needed */
+            height: 30px; /* Adjust the height as needed */
+
+            filter: brightness(0.5);
+        } 
+        /* Style for active icon */
+        #toggleShapefileBtn.active img {
+         filter: brightness(1);
+        }
+
+        #info-btn {
+            position: absolute;
+            top: 315px;
+            right: 10px;
+            z-index: 1000;
+            background-color: #ffffff;
+            padding: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+ 
+
+        #info-btn img {
+            width: 30px; /* Adjust the width as needed */
+            height: 30px; /* Adjust the height as needed */
+            filter: brightness(0.5);
+        } 
+        /* Style for active icon */
+        #info.active img {
+         filter: brightness(1);
+        }
+
+    
+        .ol-tooltip {
+          position: relative;
+          background: rgba(0, 0, 0, 0.5);
+          border-radius: 4px;
+          color: white;
+          padding: 4px 8px;
+          opacity: 0.7;
+          white-space: nowrap;
+          font-size: 12px;
+          cursor: default;
+          user-select: none;
+        }
+        .ol-tooltip-measure {
+          opacity: 1;
+          font-weight: bold;
+        }
+        .ol-tooltip-static {
+          background-color: #ffcc33;
+          color: black;
+          border: 1px solid white;
+        }
+        .ol-tooltip-measure:before,
+        .ol-tooltip-static:before {
+          border-top: 6px solid rgba(0, 0, 0, 0.5);
+          border-right: 6px solid transparent;
+          border-left: 6px solid transparent;
+          content: "";
+          position: absolute;
+          bottom: -6px;
+          margin-left: -7px;
+          left: 50%;
+        }
+       .ol-tooltip-static:before {
+          border-top-color: #ffcc33;
+        }
+
+    </style>
+        <style>
+            /* Header styles */
+            header {
+                background-color: #333; /* Background color */
+                color: white; /* Text color */
+                text-align: center; /* Center align text */
+                padding: 15px; /* Padding around text */
+            }
+    
+            h1 {
+                margin: 0; /* Remove default margin */
+                font-size: 24px; /* Font size */
+            }
+            #coords {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        padding: 10px;
+        background-color: rgba(255, 255, 255, 0.8);
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        z-index: 1000; /* برای اطمینان از نمایش در بالای سایر عناصر */
+    }
+   
+#info-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    border: 1px solid #ccc;
+    padding: 20px;
+    z-index: 1000;
+}
+
+#close-modal {
+    margin-top: 10px;
+}
+
+        </style>
+</head>
+<body>
+    <header style="text-align: center; padding: 12px;">
+        <h1>Web GIS Project</h1>
+    </header>
+    
+    <h2>Web GIS Project1</h2> <!-- تغییر تگ h1 به h2 -->
+
+    <div id="coords" style="position: absolute;">
+        coordinates: (x: 0, y: 0)
+    </div>
+
+    <div id="length-box" class="length-box">
+        <span id="length-value"></span>
+    </div>
+    <div id="area-box" class="area-box">
+        <span id="area-value"></span>
+    </div>
+      
+    <button id="info-btn" onclick="updateFeatureTable()">
+        <img src="./img/information.jpg" alt="info-btn">  
+    </button>
+
+    <button id="toggleShapefileBtn" onclick="toggleShapefileVisibility()">
+        <img src="./img/SHP.jpg" alt="SHP">  
+    </button>
+
+    <button id="measure-length-btn" onclick="toggleMeasureLength()">
+        <img src="./img/lenght.png" alt="Measure Length">
+    </button>
+
+    <!-- Add Point button for area measurement -->
+    <button id="measure-area-btn" onclick="toggleMeasureArea()">
+        <img src="./img/area.png" alt="Measure Area">
+    </button>
+
+    <!-- Add Point button -->
+    <button id="add-point-btn" onclick="toggleAddPoint()">
+        <img src="./img/point.jpg" alt="Add Point">
+    </button>
+
+    <!-- Map container -->
+    <div id="map" style="height: 650px;"></div>
+
+    <div id="layerSwitcher">
+        <h3>layers</h3>
+        <label>
+            <input type="checkbox" id="layer1" onchange="toggleLayer('layer1', layer1)"> building
+        </label><br>
+        <label>
+            <input type="checkbox" id="layer2" onchange="toggleLayer('layer2', layer2)"> landuse
+        </label><br>
+        <label>
+            <input type="checkbox" id="layer3" onchange="toggleLayer('layer3', layer3)"> natural
+        </label><br>
+        <label>
+            <input type="checkbox" id="layer4" onchange="toggleLayer('layer4', layer4)"> naturalp
+        </label><br>
+        <label>
+            <input type="checkbox" id="layer5" onchange="toggleLayer('layer5', layer5)"> places
+        </label><br>
+        <label>
+            <input type="checkbox" id="layer6" onchange="toggleLayer('layer6', layer6)"> placesp
+        </label><br>
+        <label>
+            <input type="checkbox" id="layer7" onchange="toggleLayer('layer7', layer7)"> pofw
+        </label><br>
+        <label>
+            <input type="checkbox" id="layer8" onchange="toggleLayer('layer8', layer8)"> pofwp
+        </label><br>
+        <label>
+            <input type="checkbox" id="layer9" onchange="toggleLayer('layer9', layer9)"> pois
+        </label><br>
+        <label>
+            <input type="checkbox" id="layer10" onchange="toggleLayer('layer10', layer10)"> poisp
+        </label><br>
+        <label>
+            <input type="checkbox" id="layer11" onchange="toggleLayer('layer11', layer11)"> railways
+        </label><br>
+        <label>
+            <input type="checkbox" id="layer12" onchange="toggleLayer('layer12', layer12)"> roads
+        </label><br>
+        <label>
+            <input type="checkbox" id="layer13" onchange="toggleLayer('layer13', layer13)"> traffic
+        </label><br>
+        <label>
+            <input type="checkbox" id="layer14" onchange="toggleLayer('layer14', layer14)"> trafficp
+        </label><br>
+        <label>
+            <input type="checkbox" id="layer15" onchange="toggleLayer('layer15', layer15)"> transport
+        </label><br>
+        <label>
+            <input type="checkbox" id="layer16" onchange="toggleLayer('layer16', layer16)"> transportp
+        </label><br>
+        <label>
+            <input type="checkbox" id="layer17" onchange="toggleLayer('layer17', layer17)"> water
+        </label><br>
+        <label>
+            <input type="checkbox" id="layer18" onchange="toggleLayer('layer18', layer18)"> waterways
+        </label><br>
+    </div>
+    
+
+    <!-- Include OpenLayers library and your JavaScript file -->
+    <script src="https://cdn.jsdelivr.net/npm/ol@6.5.0/dist/ol.js"></script>
+    <script src="yourScript.js"></script>
+</body>
+<script>
+       var map; // The main map object
+var geoserverLayers = {}; // Store geoserver layers
+var addPointActive = false; // Flag to track point addition status
+var layer1, layer2, layer3, layer4, layer5, layer6, layer7, layer8, layer9, layer10, 
+    layer11, layer12, layer13, layer14, layer15, layer16, layer17, layer18;
+ 
+
+// Create the map
+function createMap() {
+    map = new ol.Map({
+        target: 'map',
+        layers: [
+            new ol.layer.Tile({
+                source: new ol.source.OSM() // Default base map
+            })
+        ],
+        view: new ol.View({
+            center: ol.proj.fromLonLat([52.552175, 29.596928]), // Center coordinates
+            zoom: 12 // Initial zoom level
+        })
+    });
+
+    layer1 = new ol.layer.Tile({
+    source: new ol.source.TileWMS({
+        url: 'http://localhost:8080/geoserver/wms',
+        params: { 'LAYERS': 'ne:building', 'TILED': true },
+        serverType: 'geoserver'
+    }),
+    visible: false
+});
+
+layer2 = new ol.layer.Tile({
+    source: new ol.source.TileWMS({
+        url: 'http://localhost:8080/geoserver/wms',
+        params: { 'LAYERS': 'ne:landuse', 'TILED': true },
+        serverType: 'geoserver'
+    }),
+    visible: false
+});
+
+layer3 = new ol.layer.Tile({
+    source: new ol.source.TileWMS({
+        url: 'http://localhost:8080/geoserver/wms',
+        params: { 'LAYERS': 'ne:natural', 'TILED': true },
+        serverType: 'geoserver'
+    }),
+    visible: false
+});
+
+layer4 = new ol.layer.Tile({
+    source: new ol.source.TileWMS({
+        url: 'http://localhost:8080/geoserver/wms',
+        params: { 'LAYERS': 'ne:naturalp', 'TILED': true },
+        serverType: 'geoserver'
+    }),
+    visible: false
+});
+
+layer5 = new ol.layer.Tile({
+    source: new ol.source.TileWMS({
+        url: 'http://localhost:8080/geoserver/wms',
+        params: { 'LAYERS': 'ne:places', 'TILED': true },
+        serverType: 'geoserver'
+    }),
+    visible: false
+});
+
+layer6 = new ol.layer.Tile({
+    source: new ol.source.TileWMS({
+        url: 'http://localhost:8080/geoserver/wms',
+        params: { 'LAYERS': 'ne:placesp', 'TILED': true },
+        serverType: 'geoserver'
+    }),
+    visible: false
+});
+
+layer7 = new ol.layer.Tile({
+    source: new ol.source.TileWMS({
+        url: 'http://localhost:8080/geoserver/wms',
+        params: { 'LAYERS': 'ne:pofw', 'TILED': true },
+        serverType: 'geoserver'
+    }),
+    visible: false
+});
+
+layer8 = new ol.layer.Tile({
+    source: new ol.source.TileWMS({
+        url: 'http://localhost:8080/geoserver/wms',
+        params: { 'LAYERS': 'ne:pofwp', 'TILED': true },
+        serverType: 'geoserver'
+    }),
+    visible: false
+});
+
+layer9 = new ol.layer.Tile({
+    source: new ol.source.TileWMS({
+        url: 'http://localhost:8080/geoserver/wms',
+        params: { 'LAYERS': 'ne:pois', 'TILED': true },
+        serverType: 'geoserver'
+    }),
+    visible: false
+});
+
+layer10 = new ol.layer.Tile({
+    source: new ol.source.TileWMS({
+        url: 'http://localhost:8080/geoserver/wms',
+        params: { 'LAYERS': 'ne:poisp', 'TILED': true },
+        serverType: 'geoserver'
+    }),
+    visible: false
+});
+
+layer11 = new ol.layer.Tile({
+    source: new ol.source.TileWMS({
+        url: 'http://localhost:8080/geoserver/wms',
+        params: { 'LAYERS': 'ne:railways', 'TILED': true },
+        serverType: 'geoserver'
+    }),
+    visible: false
+});
+
+layer12 = new ol.layer.Tile({
+    source: new ol.source.TileWMS({
+        url: 'http://localhost:8080/geoserver/wms',
+        params: { 'LAYERS': 'ne:roads', 'TILED': true },
+        serverType: 'geoserver'
+    }),
+    visible: false
+});
+
+layer13 = new ol.layer.Tile({
+    source: new ol.source.TileWMS({
+        url: 'http://localhost:8080/geoserver/wms',
+        params: { 'LAYERS': 'ne:traffic', 'TILED': true },
+        serverType: 'geoserver'
+    }),
+    visible: false
+});
+
+layer14 = new ol.layer.Tile({
+    source: new ol.source.TileWMS({
+        url: 'http://localhost:8080/geoserver/wms',
+        params: { 'LAYERS': 'ne:trafficp', 'TILED': true },
+        serverType: 'geoserver'
+    }),
+    visible: false
+});
+
+layer15 = new ol.layer.Tile({
+    source: new ol.source.TileWMS({
+        url: 'http://localhost:8080/geoserver/wms',
+        params: { 'LAYERS': 'ne:transport', 'TILED': true },
+        serverType: 'geoserver'
+    }),
+    visible: false
+});
+
+layer16 = new ol.layer.Tile({
+    source: new ol.source.TileWMS({
+        url: 'http://localhost:8080/geoserver/wms',
+        params: { 'LAYERS': 'ne:transportp', 'TILED': true },
+        serverType: 'geoserver'
+    }),
+    visible: false
+});
+
+layer17 = new ol.layer.Tile({
+    source: new ol.source.TileWMS({
+        url: 'http://localhost:8080/geoserver/wms',
+        params: { 'LAYERS': 'ne:water', 'TILED': true },
+        serverType: 'geoserver'
+    }),
+    visible: false
+});
+
+layer18 = new ol.layer.Tile({
+    source: new ol.source.TileWMS({
+        url: 'http://localhost:8080/geoserver/wms',
+        params: { 'LAYERS': 'ne:waterways', 'TILED': true },
+        serverType: 'geoserver'
+    }),
+    visible: false
+});
+
+
+    // اضافه کردن لایه‌ها به نقشه
+    map.addLayer(layer1);
+map.addLayer(layer2);
+map.addLayer(layer3);
+map.addLayer(layer4);
+map.addLayer(layer5);
+map.addLayer(layer6);
+map.addLayer(layer7);
+map.addLayer(layer8);
+map.addLayer(layer9);
+map.addLayer(layer10);
+map.addLayer(layer11);
+map.addLayer(layer12);
+map.addLayer(layer13);
+map.addLayer(layer14);
+map.addLayer(layer15);
+map.addLayer(layer16);
+map.addLayer(layer17);
+map.addLayer(layer18);
+
+}
+
+// تابع برای فعال یا غیرفعال کردن لایه‌ها
+function toggleLayer(layerId, layer) {
+    var checkbox = document.getElementById(layerId);
+    layer.setVisible(checkbox.checked); // فعال یا غیرفعال کردن لایه
+}
+
+// Toggle adding point feature
+function toggleAddPoint() {
+    addPointActive = !addPointActive; // Toggle the state
+    var button = document.getElementById("add-point-btn");
+    var icon = button.querySelector("img");
+
+    if (addPointActive) {
+        button.classList.add("active");
+        icon.style.filter = "brightness(1)";
+        map.on('click', addPointOnClick); // Activate point addition on map click
+    } else {
+        button.classList.remove("active");
+        icon.style.filter = "brightness(0.5)";
+        map.un('click', addPointOnClick); // Deactivate point addition
+    }
+}
+
+// Function to handle click event and add point to the map
+function addPointOnClick(event) {
+    var clickedCoordinate = event.coordinate; // Get clicked coordinates
+    var point = new ol.Feature({
+        geometry: new ol.geom.Point(clickedCoordinate) // Create a point feature
+    });
+
+    var pointStyle = new ol.style.Style({
+        image: new ol.style.Circle({
+            radius: 6,
+            fill: new ol.style.Fill({color: 'white'}),
+            stroke: new ol.style.Stroke({color: 'black', width: 1})
+        })
+    });
+
+    point.setStyle(pointStyle); // Set the point style
+
+    var vectorLayer = new ol.layer.Vector({
+        source: new ol.source.Vector({
+            features: [point] // Add the point to the vector layer
+        })
+    });
+
+    map.addLayer(vectorLayer); // Add vector layer to the map
+}
+
+
+
+// Open modal for base map selection
+function openModal() {
+    var modal = document.getElementById("myModal");
+    modal.style.display = "block"; // Show modal
+}
+
+// Close modal
+function closeModal() {
+    var modal = document.getElementById("myModal");
+    modal.style.display = "none"; // Hide modal
+}
+
+
+createMap();
+
+       
+
+    
+
+
+    </script>
+    
+
+    <script>
+        var measureLengthActive = false;
+    
+// measure lenght----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- --> --> -->
+var measureLengthActive = false;
+var measureLengthInteraction;
+var vectorLayer;
+var lengthFeature;
+
+function toggleMeasureLength() {
+    measureLengthActive = !measureLengthActive;
+    var button = document.getElementById("measure-length-btn");
+    var icon = button.querySelector("img");
+
+    if (measureLengthActive) {
+        button.classList.add("active");
+        icon.style.filter = "brightness(1)";
+        addLengthMeasurement();
+    } else {
+        button.classList.remove("active");
+        icon.style.filter = "brightness(0.5)";
+        map.removeInteraction(measureLengthInteraction);
+    }
+}
+
+function addLengthMeasurement() {
+    measureLengthInteraction = new ol.interaction.Draw({
+        source: new ol.source.Vector(),
+        type: "LineString"
+    });
+
+    map.addInteraction(measureLengthInteraction);
+
+    measureLengthInteraction.on('drawstart', function () {
+        if (vectorLayer && lengthFeature) {
+            vectorLayer.getSource().removeFeature(lengthFeature);
+        }
+    });
+
+    measureLengthInteraction.on('drawend', function (event) {
+        var line = event.feature.getGeometry();
+        var length = ol.sphere.getLength(line);
+        var lengthInKm = (length / 1000).toFixed(2); // Convert length to kilometers and round to 2 decimal places
+        // document.getElementById("length-info").innerHTML = "Length: " + lengthInKm + " km";
+
+        lengthFeature = new ol.Feature({
+            geometry: line
+        });
+
+        if (!vectorLayer) {
+            vectorLayer = new ol.layer.Vector({
+                source: new ol.source.Vector({
+                    features: [lengthFeature]
+                })
+            });
+            map.addLayer(vectorLayer);
+        } else {
+            vectorLayer.getSource().addFeature(lengthFeature);
+        }
+
+        // Deactivate measure length after drawing
+        toggleMeasureLength();
+    });
+    var lengthOverlay = new ol.Overlay({
+    element: document.getElementById('length-box'),
+    positioning: 'bottom-center',
+    offset: [0, -15] 
+});
+
+map.addOverlay(lengthOverlay);
+
+function updateLengthBox(length) {
+    document.getElementById('length-value').innerText = length.toFixed(2) + ' km'; 
+}
+
+measureLengthInteraction.on('drawend', function (event) {
+    var line = event.feature.getGeometry();
+    var length = ol.sphere.getLength(line) / 1000; 
+    updateLengthBox(length);
+    lengthOverlay.setPosition(line.getLastCoordinate());
+});
+
+}
+
+    </script>
+    
+
+    <script>
+// measure Area----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- --> --> -->
+var measureAreaActive = false;
+var measureAreaInteraction;
+var areaVectorLayer;
+var areaFeature;
+
+function toggleMeasureArea() {
+    measureAreaActive = !measureAreaActive;
+    var button = document.getElementById("measure-area-btn");
+    var icon = button.querySelector("img");
+
+    if (measureAreaActive) {
+        button.classList.add("active");
+        icon.style.filter = "brightness(1)";
+        addAreaMeasurement();
+    } else {
+        button.classList.remove("active");
+        icon.style.filter = "brightness(0.5)";
+        map.removeInteraction(measureAreaInteraction);
+    }
+}
+
+function addAreaMeasurement() {
+    measureAreaInteraction = new ol.interaction.Draw({
+        source: new ol.source.Vector(),
+        type: "Polygon"
+    });
+
+    map.addInteraction(measureAreaInteraction);
+
+    measureAreaInteraction.on('drawstart', function () {
+        if (areaVectorLayer && areaFeature) {
+            areaVectorLayer.getSource().removeFeature(areaFeature);
+        }
+    });
+
+    measureAreaInteraction.on('drawend', function (event) {
+        var polygon = event.feature.getGeometry();
+        var area = ol.sphere.getArea(polygon);
+        var areaInSquareMeters = (area / 1000000).toFixed(2); // Convert area to square kilometers and round to 2 decimal places
+        // document.getElementById("area-info").innerHTML = "Area: " + areaInSquareMeters + " km<sup>2</sup>";
+
+        areaFeature = new ol.Feature({
+            geometry: polygon
+        });
+
+        if (!areaVectorLayer) {
+            areaVectorLayer = new ol.layer.Vector({
+                source: new ol.source.Vector({
+                    features: [areaFeature]
+                })
+            });
+            map.addLayer(areaVectorLayer);
+        } else {
+            areaVectorLayer.getSource().addFeature(areaFeature);
+        }
+
+        // Deactivate measure area after drawing
+        toggleMeasureArea();
+    });
+    var areaOverlay = new ol.Overlay({
+    element: document.getElementById('area-box'),
+    positioning: 'bottom-center',
+    offset: [0, -15] 
+});
+
+map.addOverlay(areaOverlay);
+
+function updateAreaBox(area) {
+    document.getElementById('area-value').innerText = area.toFixed(2)  + " km2"; 
+}
+
+measureAreaInteraction.on('drawend', function (event) {
+    var polygon = event.feature.getGeometry();
+    var area = ol.sphere.getArea(polygon) / 1000000; 
+    updateAreaBox(area);
+    areaOverlay.setPosition(polygon.getInteriorPoint().getCoordinates());
+});
+
+}
+
+    </script>
+
+    <script>
+// shape file----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- --> --> -->
+var shapefileLayer = false; // Variable to store the shapefile layer
+
+function toggleShapefileVisibility() {
+    shapefileLayer = !shapefileLayer;
+            var button = document.getElementById("toggleShapefileBtn");
+            var icon = button.querySelector("img");
+
+            if (shapefileLayer) {
+                button.classList.add("active");
+                icon.style.filter = "brightness(1)";
+            } else {
+                button.classList.remove("active");
+                icon.style.filter = "brightness(0.5)";
+            }
+
+            if (shapefileLayer) {
+                map.on('click', toggleShapefile);
+            } else {
+                map.un('click', toggleShapefile);
+            }
+        }
+
+        var shapefileLayer = null; // Variable to store the shapefile layer
+var iconIsBright = false; // Flag to track icon brightness state
+
+function toggleShapefileVisibility() {
+    if (!shapefileLayer) {
+        // If the shapefile layer doesn't exist, create it
+        shapefileLayer = new ol.layer.Tile({
+            source: new ol.source.TileWMS({
+                url: 'http://localhost:8080/geoserver/ne/wms?', // URL of your GeoServer WMS service
+                params: {
+                    'LAYERS': 'ne:building',
+                    'VERSION': '1.1.1',
+                    'FORMAT': 'image/png',
+                    'TILED': true
+                }
+            }),
+            visible: true // Initially set to visible
+        });
+        map.addLayer(shapefileLayer); // Add the layer to the map
+    } else {
+        // If the shapefile layer exists, toggle its visibility
+        shapefileLayer.setVisible(!shapefileLayer.getVisible());
+    }
+
+    // Toggle icon brightness
+    var button = document.getElementById("toggleShapefileBtn");
+    var icon = button.querySelector("img");
+    var brightness = icon.style.filter.replace("brightness(", "").replace(")", "");
+    brightness = parseFloat(brightness);
+    brightness = (brightness === 1) ? 0.5 : 1; // Toggle brightness between 1 and 0.5
+    icon.style.filter = "brightness(" + brightness + ")";
+
+}
+
+// information----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- --> --> --
+
+
+
+function closeFeatureTable() {
+    document.getElementById('featureTable').style.display = 'none';
+}
+
+
+function openFeatureTable() {
+    document.getElementById('featureTable').style.display = 'block';
+}
+
+
+
+function updateFeatureTable(properties, coordinates) {
+    var table = '<table border="1"><tr><th>ویژگی</th><th>مقدار</th></tr>';
+    
+    
+    if (Object.keys(properties).length > 0) {
+        Object.keys(properties).forEach(function (key) {
+            table += '<tr><td>' + key + '</td><td>' + properties[key] + '</td></tr>';
+        });
+    }
+    
+    
+    table += '<tr><td>عرض جغرافیایی</td><td>' + coordinates[1].toFixed(13) + '</td></tr>';
+    table += '<tr><td>طول جغرافیایی</td><td>' + coordinates[0].toFixed(13) + '</td></tr>';
+    
+    table += '</table>';
+    document.getElementById('featureTable').innerHTML = table;
+}
+
+
+
+var infoActive = false;
+
+
+document.getElementById("info-btn").addEventListener("click", function() {
+    
+    infoActive = !infoActive;
+    
+    if (infoActive) {
+        openFeatureTable();
+    } else {
+        closeFeatureTable();
+    }
+});
+
+
+map.on("click", function(event) {
+    
+    if (infoActive) {
+        var clickedCoordinate = event.coordinate;
+        console.log("Hello");
+        console.log(clickedCoordinate);
+        
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'http://localhost:8080/geoserver/ne/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=ne:building&outputFormat=application/json', true);
+        xhr.onload = function () {
+            if (xhr.status >= 20 && xhr.status < 400) {
+                var response = JSON.parse(xhr.responseText);
+                var features = response.features;
+                var closestFeature = null;
+                var closestFeatureDist = Infinity;
+                console.log(response);
+                console.log("------");
+                console.log(features);
+
+                var test1 = [50, 30];
+                var test2  = [80, 40];
+                
+                var testresult = ol.sphere.getDistance(test1, test2);
+                console.log("testresult: ", testresult);
+                features.forEach(function (feature) {
+                    var geometry = feature.geometry.coordinates;
+              //      console.log("geometry: ", geometry);  
+              //      console.log("clickedCoo: ", clickedCoordinate);
+                    var dist = ol.sphere.getDistance(clickedCoordinate, geometry[0][0][0]);
+             //       console.log("dist: ", dist);
+                    if (dist < closestFeatureDist) {
+                        closestFeature = feature;
+                        closestFeatureDist = dist;
+                    }
+                });
+
+                console.log("ClosestFeature: ", closestFeature);
+
+                
+                if (closestFeature) {
+                    var properties = closestFeature.properties;
+                    var coordinates = closestFeature.geometry.coordinates;
+                    console.log("coordi: ", coordinates);
+                    
+                    updateFeatureTable(properties, coordinates[0][0][0]);
+                } else {
+                    // 
+                    updateFeatureTable({}, [0, 0]);
+                }
+            } else {
+                updateFeatureTable({}, [0, 0]);
+                
+            }
+        };
+        xhr.send();
+    }
+});
+
+
+var featureTableDiv = document.createElement('div');
+featureTableDiv.id = 'featureTable';
+featureTableDiv.style.backgroundColor = 'white';
+featureTableDiv.style.padding = '10px';
+featureTableDiv.style.borderRadius = '10px';
+featureTableDiv.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+featureTableDiv.style.position = 'absolute';
+featureTableDiv.style.top = '10px';
+featureTableDiv.style.right = '10px';
+map.getViewport().appendChild(featureTableDiv);
+
+const coordsDiv = document.getElementById('coords');
+
+map.on('pointermove', (event) => {
+    const coordinate = event.coordinate;
+    const lonLat = ol.proj.toLonLat(coordinate); // تبدیل مختصات به طول و عرض جغرافیایی
+    const lon = lonLat[0].toFixed(6); // طول جغرافیایی
+    const lat = lonLat[1].toFixed(6); // عرض جغرافیایی
+    coordsDiv.textContent = `مختصات: (x: ${lon}, y: ${lat})`; // نمایش مختصات
+});
+
+
+    </script>
+</body>
+</html>
+
+
